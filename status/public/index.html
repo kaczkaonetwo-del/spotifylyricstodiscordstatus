@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify to Discord Lyrics Status</title>
+    <!-- Outfit Font from Google Fonts for that premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <div class="logo">
+                <span class="logo-icon">🎵</span>
+                <h1>Discord Status <span class="accent-text">Lyrics Sync</span></h1>
+            </div>
+            <div class="system-status-pill" id="system-status">
+                <span class="status-dot green"></span>
+                <span class="status-text">Spotify: Connected</span>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- LEFT PANEL: CONFIGURATION -->
+            <section class="glass-card config-panel">
+                <div class="card-header">
+                    <h2>⚙️ Ustawienia</h2>
+                    <p class="subtitle">Skonfiguruj połączenie z Discordem i zachowanie statusu</p>
+                </div>
+                
+                <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();">
+                    <!-- DISCORD TOKEN -->
+                    <div class="form-group">
+                        <label for="discord-token">
+                            Token Discorda 
+                            <span class="info-trigger" onclick="toggleTokenGuide()">Jak zdobyć token? 💡</span>
+                        </label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="discord-token" placeholder="mfa.ab12cd34ef56..." autocomplete="off">
+                            <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility()">👁️</button>
+                        </div>
+                        <p class="input-hint">Zapisywany tylko lokalnie w pliku config.json.</p>
+                    </div>
+
+                    <!-- TOKEN GUIDE (COLLAPSED BY DEFAULT) -->
+                    <div id="token-guide" class="guide-box collapsed">
+                        <h3>🔑 Jak pobrać swój token Discorda?</h3>
+                        <ol>
+                            <li>Zaloguj się na **Discordzie** w przeglądarce (Chrome, Edge, Firefox).</li>
+                            <li>Wciśnij <code>F12</code> (lub <code>Ctrl+Shift+I</code>), aby otworzyć Narzędzia Deweloperskie.</li>
+                            <li>Przejdź do zakładki <strong>Console</strong> (Konsola).</li>
+                            <li>Wklej poniższy kod i wciśnij <code>Enter</code>:
+                                <pre><code onclick="copyGuideCode(this)">window.webpackChunkdiscord_app.push([[Math.random()],{},e=>{for(const[t,r]of Object.entries(e.c))if(r.exports?.default?.getToken)console.log("%cTWÓJ TOKEN:","font-size:20px;color:lime",r.exports.default.getToken())}]);</code></pre>
+                                <span class="copy-success-hint" id="copy-hint">Kliknij kod, aby skopiować!</span>
+                            </li>
+                            <li>Skopiuj wyświetlony token i wklej go powyżej. **Nigdy nikomu go nie podawaj!**</li>
+                        </ol>
+                    </div>
+
+                    <!-- CUSTOMIZATION CONTROLS -->
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="emoji-name">Emoji w statusie</label>
+                            <input type="text" id="emoji-name" placeholder="🎵" value="🎵">
+                        </div>
+                        <div class="form-group half">
+                            <label for="offset-seconds">Przesunięcie tekstu</label>
+                            <div class="range-wrapper">
+                                <input type="range" id="offset-seconds" min="-5" max="5" step="0.5" value="0">
+                                <span class="range-val" id="offset-val">0s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="prefix">Tekst przed wersem (Prefix)</label>
+                            <input type="text" id="prefix" placeholder="np. 🎤 | ">
+                        </div>
+                        <div class="form-group half">
+                            <label for="suffix">Tekst po wersie (Suffix)</label>
+                            <input type="text" id="suffix" placeholder="np. | 🎶">
+                        </div>
+                    </div>
+
+                    <!-- STATUS CONNECTIONS STATE -->
+                    <div class="status-indicator-box">
+                        <div class="indicator-item">
+                            <span class="indicator-label">Status Discord:</span>
+                            <span class="status-badge state-disconnected" id="discord-badge">Rozłączony</span>
+                        </div>
+                        <div class="indicator-error" id="discord-error-box" style="display: none;">
+                            ⚠️ <span id="discord-error-msg"></span>
+                        </div>
+                    </div>
+
+                    <!-- SYNC TOGGLE & SAVE -->
+                    <div class="action-footer">
+                        <div class="toggle-wrapper">
+                            <label class="switch">
+                                <input type="checkbox" id="sync-enabled" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="toggle-label">Synchronizacja aktywna</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btn-save">Zapisz ustawienia</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- RIGHT PANEL: MUSIC PLAYER & LYRICS -->
+            <section class="glass-card player-panel">
+                <div class="player-glow"></div>
+                <!-- ACTIVE TRACK DISPLAY -->
+                <div class="track-details-card">
+                    <div class="track-header">
+                        <div class="music-wave" id="music-wave">
+                            <span class="bar bar-1"></span>
+                            <span class="bar bar-2"></span>
+                            <span class="bar bar-3"></span>
+                            <span class="bar bar-4"></span>
+                            <span class="bar bar-5"></span>
+                        </div>
+                        <div class="track-meta">
+                            <h3 id="track-title">Brak odtwarzanego utworu</h3>
+                            <p id="track-artist">Uruchom Spotify na swoim Windowsie</p>
+                        </div>
+                    </div>
+
+                    <!-- PLAYBACK PROGRESS BAR -->
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                        <div class="time-labels">
+                            <span id="time-current">0:00</span>
+                            <span id="time-total">0:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REAL-TIME LYRICS SCROLLING -->
+                <div class="lyrics-container">
+                    <div class="lyrics-header">
+                        <span>🎤 Zsynchronizowane teksty piosenek</span>
+                        <span class="lyrics-source-badge">LRCLIB API</span>
+                    </div>
+                    <div class="lyrics-viewport" id="lyrics-viewport">
+                        <div class="lyrics-scroller" id="lyrics-scroller">
+                            <div class="lyrics-placeholder">
+                                <p class="emoji">🎶</p>
+                                <p>Teksty piosenek pojawią się automatycznie, gdy włączysz muzykę w Spotify.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Zapisano ustawienia!</div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
